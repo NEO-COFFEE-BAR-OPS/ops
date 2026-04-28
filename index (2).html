@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Neo Coffee Bar · Ops</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:wght@500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coal:#3d3b38;--coal2:#4a4845;--coal3:#565350;
+  --cream:#f5f0e8;--warm:#e0d8c8;--muted:#8a8280;--muted2:#b0aaa4;
+  --accent:#c8a882;--accent-dim:rgba(200,168,130,.12);
+  --ok:#4ea87a;--warn:#d4a030;--danger:#c86858;--blue:#4a80a8;
+  --bdr:rgba(255,255,255,.07);--bdr2:rgba(255,255,255,.14);
+  --surf:rgba(255,255,255,.04);
+  --r:8px;--rl:13px;--touch:48px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--coal);color:var(--cream);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+img{display:block;max-width:100%}
+
+/* ── LAYOUT ──────────────────────────────── */
+#app{display:none}
+.sidebar{
+  position:fixed;
+  top:0;left:0;bottom:54px;
+  width:216px;
+  background:var(--coal2);
+  border-right:1px solid var(--bdr);
+  padding:18px 11px 14px;
+  flex-direction:column;
+  display:none;
+  overflow-y:auto;
+  z-index:50;
+}
+.bnav{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  height:54px;
+  background:var(--coal2);
+  border-top:1px solid var(--bdr2);
+  display:flex;
+  z-index:50;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.main{
+  position:fixed;
+  top:0;left:0;right:0;bottom:54px;
+  overflow-y:auto;
+  padding:18px 14px 20px;
+  -webkit-overflow-scrolling:touch;
+}
+@media(min-width:860px){
+  .sidebar{display:flex;bottom:0}
+  .bnav{display:none}
+  .main{left:216px;bottom:0;padding:20px 28px}
+}
+.shell{display:contents}
+
+/* ── SIDEBAR (≥860px) ────────────────────── */
+.sidebar{
+  width:216px;background:var(--coal2);border-right:1px solid var(--bdr);
+  padding:18px 11px 14px;display:none;flex-direction:column;
+  flex-shrink:0;overflow-y:auto;
+}
+@media(min-width:860px){
+  .sidebar{display:flex}
+  .bnav{display:none}
+  .shell{height:100dvh}
+  #app{height:100dvh}
+}
+.sb-logo{font-family:'Cormorant Garant',serif;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--cream);text-align:center}
+.sb-sub{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:2px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--bdr)}
+.sb-sec{font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);padding:10px 8px 3px}
+.sbi{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--r);font-size:13px;color:var(--muted2);cursor:pointer;transition:all .13s;min-height:var(--touch);user-select:none}
+.sbi:hover{background:var(--surf);color:var(--cream)}
+.sbi.on{background:var(--accent-dim);color:var(--accent)}
+.sbi.locked{opacity:.3;cursor:not-allowed}
+.sbi-ico{font-size:14px;width:17px;text-align:center;flex-shrink:0}
+.loc-link{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r);font-size:12px;color:var(--muted);cursor:pointer;transition:all .13s;min-height:38px}
+.loc-link:hover{background:var(--surf);color:var(--cream)}
+.loc-link.on{color:var(--cream)}
+.loc-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sb-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--bdr)}
+.user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surf);border-radius:var(--r);margin-bottom:8px}
+.uav{width:28px;height:28px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.uname{font-size:12px;font-weight:500}
+.rpill{font-size:9px;padding:2px 6px;border-radius:10px;font-weight:500;text-transform:uppercase;letter-spacing:.3px}
+.rp-owner   {background:rgba(200,168,130,.15);color:var(--accent)}
+.rp-regional{background:rgba(78,168,122,.12);color:var(--ok)}
+.rp-gm      {background:rgba(176,170,164,.1);color:var(--muted2)}
+.btn-out{width:100%;padding:7px;background:none;color:var(--muted);border:1px solid var(--bdr2);border-radius:var(--r);font-size:11px;cursor:pointer;transition:all .13s}
+.btn-out:hover{color:var(--cream);background:var(--surf)}
+
+/* bnav handled in layout */
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--muted);font-size:10px;border:none;background:none;padding:4px 0;transition:color .13s;min-height:var(--touch)}
+.bni .i{font-size:19px;line-height:1}
+.bni.on{color:var(--accent)}
+
+/* main handled in layout */
+.page{display:none}
+.phdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:10px;flex-wrap:wrap}
+.ptitle{font-family:'Cormorant Garant',serif;font-size:22px;font-weight:500}
+.pmeta{font-size:11px;color:var(--muted2);margin-top:3px}
+@media(min-width:860px){.ptitle{font-size:25px}}
+
+/* ── BUTTONS ─────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:10px 16px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .13s;white-space:nowrap;min-height:var(--touch)}
+.btn-p{background:var(--cream);color:var(--coal2)}
+.btn-p:hover{opacity:.85}
+.btn-s{background:none;color:var(--muted2);border:1px solid var(--bdr2)}
+.btn-s:hover{color:var(--cream);background:var(--surf)}
+.btn-a{background:var(--accent);color:var(--coal2)}
+.btn-a:hover{opacity:.85}
+.btn-d{background:none;color:var(--danger);border:1px solid var(--danger)}
+.btn-d:hover{background:rgba(200,104,88,.1)}
+.btn-sm{padding:7px 13px;font-size:12px;min-height:36px}
+
+/* ── CARDS ───────────────────────────────── */
+.card{background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--rl);padding:15px}
+.ctitle{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:11px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.g4{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(min-width:600px){.g4{grid-template-columns:repeat(4,1fr)}}
+
+/* ── KPI ──────────────────────────────────── */
+.kpi{background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--rl);padding:13px 15px}
+.klbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:5px}
+.kval{font-size:22px;font-weight:300;font-family:'Cormorant Garant',serif;line-height:1}
+.ksub{font-size:10px;color:var(--muted);margin-top:3px}
+.kval.ok{color:var(--ok)}.kval.bad{color:var(--danger)}.kval.warn{color:var(--warn)}
+
+/* ── TABLE ───────────────────────────────── */
+.tw{background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:360px}
+th{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 11px;border-bottom:1px solid var(--bdr);font-weight:400;text-align:left;white-space:nowrap}
+td{padding:9px 11px;font-size:13px;border-bottom:1px solid var(--bdr);color:var(--warm);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.tar{text-align:right}
+
+/* ── BADGE ───────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500}
+.b-ok  {background:rgba(78,168,122,.12);color:var(--ok)}
+.b-warn{background:rgba(212,160,48,.12); color:var(--warn)}
+.b-bad {background:rgba(200,104,88,.12); color:var(--danger)}
+
+/* ── FORMS ───────────────────────────────── */
+.fg{margin-bottom:13px}
+.flbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);margin-bottom:4px}
+.fi{width:100%;padding:10px 12px;background:rgba(255,255,255,.06);border:1px solid var(--bdr2);border-radius:var(--r);color:var(--cream);font-size:14px;font-family:inherit;outline:none;transition:border-color .13s;min-height:var(--touch)}
+.fi:focus{border-color:var(--accent)}
+.fi::placeholder{color:var(--muted)}
+.fi:disabled{opacity:.4;cursor:not-allowed}
+.fsel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.ferr{font-size:12px;color:var(--danger);margin-top:4px;display:none}
+
+/* ── INVENTORY FORM ──────────────────────── */
+.icat{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);padding:10px 0 5px;border-bottom:1px solid var(--bdr);margin-bottom:4px}
+.icard{background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--r);padding:11px;margin-bottom:7px}
+.iname{font-size:13px;font-weight:500;margin-bottom:7px}
+.i3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.i3 label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:2px}
+.iinp{width:100%;padding:8px;background:rgba(255,255,255,.06);border:1px solid var(--bdr);border-radius:6px;color:var(--cream);font-size:14px;text-align:right;font-family:inherit;transition:border-color .13s;min-height:44px}
+.iinp:focus{outline:none;border-color:var(--accent);background:rgba(255,255,255,.09)}
+.ires{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted2)}
+.lok{color:var(--ok);font-weight:500}.lwarn{color:var(--warn);font-weight:500}.lbad{color:var(--danger);font-weight:500}
+
+/* ── RECIPE GRID ─────────────────────────── */
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:11px}
+@media(min-width:640px){.rgrid{grid-template-columns:repeat(auto-fill,minmax(195px,1fr))}}
+.rcard{background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;cursor:pointer;transition:border-color .13s}
+.rcard:hover{border-color:var(--bdr2)}
+.rphoto{height:100px;background:var(--surf);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);position:relative;overflow:hidden}
+.rphoto img{width:100%;height:100%;object-fit:cover}
+.rbody{padding:11px}
+.rname{font-size:13px;font-weight:500;margin-bottom:2px;line-height:1.3}
+.rcat{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:7px}
+.mbar{height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin:7px 0}
+.mfill{height:100%;border-radius:2px;background:var(--ok)}
+
+/* ── WEEK BAR ────────────────────────────── */
+.wbar{display:flex;align-items:center;gap:8px;background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--r);padding:8px 12px;margin-bottom:14px}
+.wlbl{font-size:11px;color:var(--muted)}
+.wval{font-size:14px;font-weight:500;flex:1}
+.wbtn{background:none;border:1px solid var(--bdr2);color:var(--muted2);border-radius:6px;padding:4px 10px;font-size:17px;cursor:pointer;transition:all .13s;min-height:32px;line-height:1}
+.wbtn:hover{color:var(--cream);background:var(--surf)}
+
+/* ── SYNC BANNER ─────────────────────────── */
+.sbanner{display:flex;align-items:center;gap:9px;background:rgba(78,168,122,.07);border:1px solid rgba(78,168,122,.2);border-radius:var(--r);padding:9px 13px;margin-bottom:14px;font-size:12px}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex-shrink:0}
+.sdot.w{background:var(--warn)}.sdot.e{background:var(--danger)}
+
+/* ── MODAL ───────────────────────────────── */
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;align-items:center;justify-content:center;padding:14px}
+.moverlay.open{display:flex}
+.mbox{background:var(--coal2);border:1px solid var(--bdr2);border-radius:var(--rl);padding:22px;width:100%;max-width:480px;max-height:90dvh;overflow-y:auto}
+.mtitle{font-family:'Cormorant Garant',serif;font-size:19px;font-weight:500;margin-bottom:14px}
+.mfoot{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+/* ── LOGIN ───────────────────────────────── */
+#login{min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--coal2);padding:18px}
+.lbox{width:100%;max-width:350px;background:var(--coal);border:1px solid var(--bdr2);border-radius:var(--rl);padding:34px 26px;text-align:center}
+.lbrand{font-family:'Cormorant Garant',serif;font-size:14px;letter-spacing:4px;text-transform:uppercase;color:var(--cream);margin-bottom:2px}
+.lsub{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--bdr2)}
+.lerr{font-size:12px;color:var(--danger);margin-bottom:11px;display:none;text-align:left}
+.lbtn{width:100%;padding:13px;background:var(--cream);color:var(--coal2);border:none;border-radius:var(--r);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .13s;min-height:var(--touch)}
+.lbtn:hover{opacity:.85}
+.lnote{font-size:11px;color:var(--muted);margin-top:13px;line-height:1.6}
+
+/* ── TOAST ───────────────────────────────── */
+#toast{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--coal3);border:1px solid var(--bdr2);border-radius:20px;padding:9px 20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis}
+#toast.show{opacity:1}
+@media(min-width:860px){#toast{bottom:22px}}
+
+/* ── UPLOAD ──────────────────────────────── */
+.upzone{border:1px dashed var(--bdr2);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surf)}
+.upzone:hover,.upzone.drag{border-color:var(--accent);background:var(--accent-dim)}
+.upzone input{display:none}
+
+/* ── MISC ────────────────────────────────── */
+.row{display:flex;gap:7px;align-items:center}
+.gap{flex:1}
+.dim{color:var(--muted2);font-size:12px}
+.divider{height:1px;background:var(--bdr);margin:13px 0}
+.spin{width:18px;height:18px;border:2px solid var(--bdr2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;text-align:center}
+.eico{font-size:36px;opacity:.2;margin-bottom:10px}
+.empty h3{font-size:14px;font-weight:400;color:var(--muted2);margin-bottom:5px}
+.empty p{font-size:12px;color:var(--muted);line-height:1.7}
+.user-row{display:flex;align-items:center;gap:10px;padding:11px;background:var(--coal2);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:7px}
+.urow-av{width:34px;height:34px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.csw{width:26px;height:26px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .15s;flex-shrink:0}
+.csw.on{border-color:var(--cream);transform:scale(1.15)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN ─────────────────────────────────────── -->
+<div id="login">
+  <div class="lbox">
+    <div class="lbrand">Neo Coffee Bar</div>
+    <div class="lsub">Operations System</div>
+    <div class="lerr" id="lerr"></div>
+    <div class="fg" style="text-align:left">
+      <label class="flbl">Email</label>
+      <input class="fi" type="email" id="lemail" placeholder="you@neocoffeebar.com" autocomplete="email"/>
+    </div>
+    <div class="fg" style="text-align:left">
+      <label class="flbl">Password</label>
+      <input class="fi" type="password" id="lpw" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"/>
+    </div>
+    <button class="lbtn" onclick="login()" id="lbtn">Sign In</button>
+    <div class="lnote">Neo Coffee Bar staff only.<br>Contact your manager for access.</div>
+  </div>
+</div>
+
+<!-- APP ──────────────────────────────────────── -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-logo">Neo Coffee Bar</div>
+    <div class="sb-sub">Operations</div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="sb-sec">Overview</div>
+      <div class="sbi on" onclick="go('dash',this)" id="n-dash"><span class="sbi-ico">◈</span>Dashboard</div>
+      <div class="sbi" onclick="go('sales',this)" id="n-sales"><span class="sbi-ico">↑</span>Sales & Square</div>
+      <div class="sb-sec">Operations</div>
+      <div class="sbi" onclick="go('inv',this)" id="n-inv"><span class="sbi-ico">◫</span>Inventory Count</div>
+      <div class="sbi" onclick="go('cogs',this)" id="n-cogs"><span class="sbi-ico">◎</span>COGS Report</div>
+      <div class="sb-sec">Menu</div>
+      <div class="sbi" onclick="go('rec',this)" id="n-rec"><span class="sbi-ico">◉</span>Recipes</div>
+      <div class="sbi" onclick="go('items',this)" id="n-items"><span class="sbi-ico">⊞</span>Item Master</div>
+      <div class="sb-sec" id="lbl-locs">Locations</div>
+      <div id="loc-list"></div>
+      <div class="sb-sec" id="lbl-admin">Admin</div>
+      <div class="sbi" onclick="go('settings',this)" id="n-settings"><span class="sbi-ico">⚙</span>Settings</div>
+    </div>
+    <div class="sb-foot">
+      <div class="user-chip">
+        <div class="uav" id="sb-av">–</div>
+        <div><div class="uname" id="sb-name">–</div><div><span class="rpill" id="sb-role">–</span></div></div>
+      </div>
+      <button class="btn-out" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="shell">
+    <div class="main" id="mscroll">
+
+      <!-- DASHBOARD ──────────────────────── -->
+      <div class="page" id="p-dash">
+        <div class="phdr">
+          <div><div class="ptitle">Dashboard</div><div class="pmeta" id="dash-meta">–</div></div>
+          <button class="btn btn-s btn-sm" onclick="go('sales',document.getElementById('n-sales'))">↑ Sync Square</button>
+        </div>
+        <div class="wbar">
+          <span class="wlbl">Week of</span>
+          <button class="wbtn" onclick="shiftW(-1)">‹</button>
+          <span class="wval" id="wd-dash">–</span>
+          <button class="wbtn" onclick="shiftW(1)">›</button>
+        </div>
+        <div class="g4" style="margin-bottom:12px" id="dash-kpis"></div>
+        <div class="g2" style="margin-bottom:12px">
+          <div class="card"><div class="ctitle">Top Items</div><table><tbody id="t-top"></tbody></table></div>
+          <div class="card"><div class="ctitle">Loss Alerts</div><table><tbody id="t-alerts"></tbody></table></div>
+        </div>
+        <div class="card" id="c-locs">
+          <div class="ctitle">This Week by Location</div>
+          <table><thead><tr><th>Location</th><th class="tar">Net Sales</th><th class="tar">COGS%</th><th class="tar">Items</th><th>Count</th></tr></thead>
+          <tbody id="t-locs"></tbody></table>
+        </div>
+      </div>
+
+      <!-- SALES & SQUARE ─────────────────── -->
+      <div class="page" id="p-sales">
+        <div class="phdr">
+          <div><div class="ptitle">Sales & Square</div><div class="pmeta">Import sales data or enter manually</div></div>
+          <button class="btn btn-a btn-sm" onclick="squareSync()" id="btn-sq">⟳ Sync from Square</button>
+        </div>
+        <div class="sbanner" id="sq-banner"><div class="sdot" id="sq-dot"></div><span id="sq-msg">Checking…</span><span class="gap"></span><button class="btn btn-s btn-sm" onclick="go('settings',document.getElementById('n-settings'))">Configure</button></div>
+        <div id="sales-loc-tabs" class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:6px"></div>
+        <div class="wbar">
+          <span class="wlbl">Week of</span>
+          <button class="wbtn" onclick="shiftW(-1)">‹</button>
+          <span class="wval" id="wd-sales">–</span>
+          <button class="wbtn" onclick="shiftW(1)">›</button>
+        </div>
+        <div class="tw"><table>
+          <thead><tr><th>Recipe</th><th>Category</th><th class="tar">Units Sold</th><th class="tar">Net Sales</th><th class="tar">Theor. COGS</th><th class="tar">COGS%</th></tr></thead>
+          <tbody id="t-sales"></tbody>
+        </table></div>
+        <div style="margin-top:9px;text-align:right"><button class="btn btn-p btn-sm" onclick="saveSales()">✓ Save</button></div>
+      </div>
+
+      <!-- INVENTORY COUNT ────────────────── -->
+      <div class="page" id="p-inv">
+        <div class="phdr">
+          <div><div class="ptitle">Inventory Count</div><div class="pmeta" id="inv-meta">–</div></div>
+          <div class="row"><button class="btn btn-s btn-sm" onclick="resetInv()">↺ Reset</button><button class="btn btn-p btn-sm" onclick="saveInv()">✓ Submit</button></div>
+        </div>
+        <div class="wbar">
+          <span class="wlbl">Week of</span><button class="wbtn" onclick="shiftW(-1)">‹</button>
+          <span class="wval" id="wd-inv">–</span><button class="wbtn" onclick="shiftW(1)">›</button>
+        </div>
+        <div id="inv-loc-tabs" class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:6px"></div>
+        <div id="inv-form"></div>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7">
+          💡 Yield % reduces the effective cost of produce/proteins. Loss % = (Actual − Theoretical) ÷ Actual. Over 10% = amber, over 20% = red.
+        </div>
+      </div>
+
+      <!-- COGS REPORT ────────────────────── -->
+      <div class="page" id="p-cogs">
+        <div class="phdr">
+          <div><div class="ptitle">COGS Report</div><div class="pmeta">Weekly cost of goods sold</div></div>
+          <button class="btn btn-s btn-sm" onclick="toast('Export coming soon')">↓ Export</button>
+        </div>
+        <div class="wbar">
+          <span class="wlbl">Week of</span><button class="wbtn" onclick="shiftW(-1)">‹</button>
+          <span class="wval" id="wd-cogs">–</span><button class="wbtn" onclick="shiftW(1)">›</button>
+        </div>
+        <div class="g4" style="margin-bottom:12px" id="cogs-kpis"></div>
+        <div class="g2" style="margin-bottom:12px">
+          <div class="card"><div class="ctitle">COGS by Recipe</div>
+            <table><thead><tr><th>Recipe</th><th class="tar">Cost</th><th class="tar">Price</th><th class="tar">COGS%</th></tr></thead>
+            <tbody id="t-cogs-rec"></tbody></table></div>
+          <div class="card"><div class="ctitle">Loss by Category</div>
+            <table><thead><tr><th>Category</th><th class="tar">Theor.</th><th class="tar">Loss%</th><th>Status</th></tr></thead>
+            <tbody id="t-cogs-cat"></tbody></table></div>
+        </div>
+        <div class="tw"><table>
+          <thead><tr><th>Item</th><th>Cat.</th><th>Yield%</th><th class="tar">Actual</th><th class="tar">Theor.</th><th class="tar">Variance</th><th class="tar">Loss%</th><th class="tar">Loss$</th></tr></thead>
+          <tbody id="t-cogs-var"></tbody>
+        </table></div>
+      </div>
+
+      <!-- RECIPES ────────────────────────── -->
+      <div class="page" id="p-rec">
+        <div class="phdr">
+          <div><div class="ptitle">Recipe Book</div><div class="pmeta" id="rec-meta">–</div></div>
+          <div class="row" style="gap:7px">
+            <select class="fi fsel btn-sm" style="min-height:36px;min-width:120px" id="cat-filter" onchange="renderRecipes()"><option value="">All categories</option></select>
+            <button class="btn btn-p btn-sm" id="btn-add-rec" onclick="openRecModal()">+ Add</button>
+          </div>
+        </div>
+        <div class="rgrid" id="rec-grid"></div>
+      </div>
+
+      <!-- ITEM MASTER ─────────────────────── -->
+      <div class="page" id="p-items">
+        <div class="phdr">
+          <div><div class="ptitle">Item Master</div><div class="pmeta">Update prices & yield — changes auto-update all recipe costs</div></div>
+          <button class="btn btn-p btn-sm" id="btn-add-item" onclick="openIngModal()">+ Add item</button>
+        </div>
+        <div class="tw"><table>
+          <thead><tr><th>Item</th><th>Category</th><th>Vendor</th><th>Unit</th><th class="tar">Unit Cost $</th><th class="tar">Yield %</th><th class="tar">Eff. Cost $</th><th></th></tr></thead>
+          <tbody id="t-items"></tbody>
+        </table></div>
+      </div>
+
+      <!-- SETTINGS ───────────────────────── -->
+      <div class="page" id="p-settings">
+        <div class="phdr"><div class="ptitle">Settings</div></div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="ctitle">Square API</div>
+          <div class="fg"><label class="flbl">Personal Access Token</label><input class="fi" type="password" id="sq-tok" placeholder="sq0atp-…"/></div>
+          <div class="fg"><label class="flbl">Environment</label>
+            <select class="fi fsel" id="sq-env"><option value="production">Production</option><option value="sandbox">Sandbox (testing)</option></select></div>
+          <div class="row"><button class="btn btn-a btn-sm" onclick="saveSqConfig()">Save & Test</button><span id="sq-res" style="font-size:12px;color:var(--muted);margin-left:8px"></span></div>
+        </div>
+        <div class="card" style="margin-bottom:12px" id="c-loc-settings">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+            <div class="ctitle" style="margin:0">Locations</div>
+            <button class="btn btn-s btn-sm" onclick="openLocModal()">+ Add</button>
+          </div>
+          <div id="loc-settings"></div>
+        </div>
+        <div class="card" id="c-users">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+            <div class="ctitle" style="margin:0">Team Members</div>
+            <button class="btn btn-s btn-sm" onclick="openInvModal()">+ Invite</button>
+          </div>
+          <div id="users-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bnav">
+    <button class="bni on" onclick="go('dash',this)" data-p="dash"><span class="i">◈</span><span>Dash</span></button>
+    <button class="bni" onclick="go('sales',this)" data-p="sales"><span class="i">↑</span><span>Sales</span></button>
+    <button class="bni" onclick="go('inv',this)" data-p="inv"><span class="i">◫</span><span>Count</span></button>
+    <button class="bni" onclick="go('cogs',this)" data-p="cogs"><span class="i">◎</span><span>COGS</span></button>
+    <button class="bni" onclick="go('rec',this)" data-p="rec"><span class="i">◉</span><span>Recipes</span></button>
+  </div>
+
+</div>
+
+<!-- MODALS ───────────────────────────────────── -->
+
+<!-- Recipe -->
+<div class="moverlay" id="m-rec">
+  <div class="mbox">
+    <div class="mtitle" id="m-rec-title">Add Recipe</div>
+    <input type="hidden" id="rf-id"/>
+    <div class="fg"><label class="flbl">Recipe Name</label><input class="fi" id="rf-name" placeholder="e.g. Lavender Sour"/></div>
+    <div class="g2">
+      <div class="fg"><label class="flbl">Category</label><input class="fi" id="rf-cat" placeholder="Cocktails"/></div>
+      <div class="fg"><label class="flbl">Retail Price $</label><input class="fi" id="rf-price" type="number" min="0" step="0.01" placeholder="0.00"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Description</label><input class="fi" id="rf-desc" placeholder="Short description (optional)"/></div>
+    <div class="fg">
+      <label class="flbl">Square Menu Item</label>
+      <div style="display:flex;gap:8px">
+        <select class="fi fsel" id="rf-sq-select" style="flex:1" onchange="onSquareItemSelect(this)">
+          <option value="">-- Select from Square or type below --</option>
+        </select>
+        <button class="btn btn-s btn-sm" onclick="loadSquareMenu()" id="btn-load-sq" style="white-space:nowrap">↺ Load</button>
+      </div>
+      <div style="margin-top:6px">
+        <input class="fi" id="rf-sq" placeholder="Square item name (auto-filled or type manually)" style="margin-top:4px"/>
+      </div>
+    </div>
+    <!-- Photo upload -->
+    <div class="fg">
+      <label class="flbl">Photo</label>
+      <div class="upzone" onclick="document.getElementById('rf-photo-inp').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handlePhotoDrop(event)">
+        <div id="photo-preview" style="font-size:11px;color:var(--muted)">Click or drag to upload photo</div>
+        <input type="file" id="rf-photo-inp" accept="image/*" style="display:none" onchange="handlePhotoSelect(this)"/>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="ctitle">Ingredients</div>
+    <div id="ing-rows"></div>
+    <button class="btn btn-s btn-sm" onclick="addIngRow()" style="margin-top:7px">+ Add ingredient</button>
+    <div class="mfoot">
+      <button class="btn btn-p" onclick="saveRec()">Save Recipe</button>
+      <button class="btn btn-s" onclick="cm('m-rec')">Cancel</button>
+      <button class="btn btn-d btn-sm" id="btn-del-rec" style="display:none;margin-left:auto" onclick="delRec()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ingredient -->
+<div class="moverlay" id="m-ing">
+  <div class="mbox">
+    <div class="mtitle" id="m-ing-title">Add Ingredient</div>
+    <input type="hidden" id="ing-id"/>
+    <div class="g2">
+      <div class="fg"><label class="flbl">Name</label><input class="fi" id="ing-name" placeholder="Organic Milk"/></div>
+      <div class="fg"><label class="flbl">Category</label><input class="fi" id="ing-cat" placeholder="Dairy"/></div>
+    </div>
+    <div class="g2">
+      <div class="fg"><label class="flbl">Vendor</label><input class="fi" id="ing-vendor" placeholder="Mr Daily"/></div>
+      <div class="fg"><label class="flbl">Unit</label><input class="fi" id="ing-unit" placeholder="ml / g / each / oz"/></div>
+    </div>
+    <div class="g2">
+      <div class="fg"><label class="flbl">Unit Cost $</label><input class="fi" id="ing-cost" type="number" min="0" step="0.000001" placeholder="0.0000"/></div>
+      <div class="fg">
+        <label class="flbl">Yield % <span style="font-weight:400;color:var(--muted)">(e.g. 70 for lemons)</span></label>
+        <input class="fi" id="ing-yield" type="number" min="1" max="100" step="1" placeholder="100"/>
+      </div>
+    </div>
+    <div class="fg"><label class="flbl">Notes</label><input class="fi" id="ing-notes" placeholder="e.g. squeeze yield, trim waste…"/></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Effective cost = Unit Cost ÷ Yield%. Example: lemon $0.65/each at 65% yield → <b style="color:var(--accent)">$1.00 effective per each</b>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-p" onclick="saveIng()">Save</button>
+      <button class="btn btn-s" onclick="cm('m-ing')">Cancel</button>
+      <button class="btn btn-d btn-sm" id="btn-del-ing" style="display:none;margin-left:auto" onclick="delIng()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite user -->
+<div class="moverlay" id="m-inv">
+  <div class="mbox">
+    <div class="mtitle">Invite Team Member</div>
+    <div class="fg"><label class="flbl">Full Name</label><input class="fi" id="inv-name" placeholder="Sarah Kim"/></div>
+    <div class="fg"><label class="flbl">Email</label><input class="fi" id="inv-email" type="email" placeholder="sarah@neocoffeebar.com"/></div>
+    <div class="fg"><label class="flbl">Password (they can change later)</label><input class="fi" id="inv-pw" type="password" placeholder="Min. 8 characters"/></div>
+    <div class="fg"><label class="flbl">Role</label>
+      <select class="fi fsel" id="inv-role" onchange="toggleLocSel()">
+        <option value="gm">GM (store manager)</option>
+        <option value="regional">Regional Manager</option>
+        <option value="owner">Owner</option>
+      </select></div>
+    <div class="fg" id="inv-loc-g">
+      <label class="flbl">Location</label>
+      <select class="fi fsel" id="inv-loc"><option value="">Select location…</option></select>
+    </div>
+    <div class="ferr" id="inv-err"></div>
+    <div class="mfoot">
+      <button class="btn btn-p" onclick="inviteUser()">Create Account</button>
+      <button class="btn btn-s" onclick="cm('m-inv')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Location -->
+<div class="moverlay" id="m-loc">
+  <div class="mbox">
+    <div class="mtitle" id="m-loc-title">Add Location</div>
+    <input type="hidden" id="loc-id"/>
+    <div class="fg"><label class="flbl">Location Name</label><input class="fi" id="lf-name" placeholder="Bloor × Yonge"/></div>
+    <div class="g2">
+      <div class="fg"><label class="flbl">Short Name</label><input class="fi" id="lf-short" placeholder="Bloor"/></div>
+      <div class="fg"><label class="flbl">Square Location ID</label><input class="fi" id="lf-sq" placeholder="Lxxxxxxxxxxxxxxxx"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Address</label><input class="fi" id="lf-addr" placeholder="123 Main St, Toronto ON M1A 1A1"/></div>
+    <div class="fg">
+      <label class="flbl">Colour</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="csw on" data-c="#C8A882" style="background:#C8A882" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#7BB89A" style="background:#7BB89A" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#9A90C0" style="background:#9A90C0" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#B09060" style="background:#B09060" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#80A880" style="background:#80A880" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#7090A8" style="background:#7090A8" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#A08080" style="background:#A08080" onclick="pickC(this)"></div>
+        <div class="csw" data-c="#888888" style="background:#888888" onclick="pickC(this)"></div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-p" onclick="saveLoc()">Save</button>
+      <button class="btn btn-s" onclick="cm('m-loc')">Cancel</button>
+      <button class="btn btn-d btn-sm" id="btn-del-loc" style="display:none;margin-left:auto" onclick="delLoc()">Remove</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const SUPA_URL = 'https://fvpseseunjkxwumnfsnm.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cHNlc2V1bmpreHd1bW5mc25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzQzMDEsImV4cCI6MjA5MjQ1MDMwMX0.eZ1UCixLWT-oKT1cFttZQ_w9C8dtMroO_AMs3FOD79c';
+const SQ_API   = 'https://neo-square-proxy.dadadadaiki73.workers.dev';
+const SB = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+window._SB = SB;  // ensure global access
+
+// ── STATE ────────────────────────────────────────────────────────
+let CU=null, LOCS=[], INGS=[], RECS=[];
+let curLoc=null, curWeek=monDate(new Date());
+let invState={}, invSales=[], salesCache={}, invCache={};
+let locColor='#C8A882', editLocId=null, ingRowN=0;
+let photoFile=null, photoPreviewUrl=null;
+
+// ── DATE ─────────────────────────────────────────────────────────
+function monDate(d){
+  const dt=new Date(d); const day=dt.getDay();
+  dt.setDate(dt.getDate()-(day===0?6:day-1)); dt.setHours(0,0,0,0); return dt;
+}
+function isoD(d){return d.toISOString().split('T')[0]}
+function fmtW(d){
+  const e=new Date(d.getTime()+6*86400000);
+  return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'})+' – '+e.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'});
+}
+function shiftW(n){curWeek=new Date(curWeek.getTime()+n*7*86400000);salesCache={};invCache={};upWD();refreshPage()}
+function upWD(){const s=fmtW(curWeek);['wd-dash','wd-sales','wd-inv','wd-cogs'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=s})}
+
+// ── AUTH ─────────────────────────────────────────────────────────
+async function login(){
+  const em=document.getElementById('lemail').value.trim().toLowerCase();
+  const pw=document.getElementById('lpw').value;
+  const btn=document.getElementById('lbtn'); const err=document.getElementById('lerr');
+  err.style.display='none'; btn.textContent='Signing in…'; btn.disabled=true;
+  try{
+    const {data,error}=await SB.auth.signInWithPassword({email:em,password:pw});
+    if(error)throw error;
+    await boot(data.session);
+  }catch(e){err.textContent=e.message||'Incorrect email or password.';err.style.display='block';}
+  btn.textContent='Sign In';btn.disabled=false;
+}
+async function boot(session){
+  if(!session)return;
+  const {data:prof}=await SB.from('profiles').select('*').eq('id',session.user.id).single();
+  if(!prof){toast('Profile not found — contact admin');return;}
+  CU={...prof,email:session.user.email};
+  curLoc=CU.location_id||null;
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  await initApp();
+}
+async function logout(){await SB.auth.signOut();CU=null;LOCS=[];INGS=[];RECS=[];document.getElementById('app').style.display='none';document.getElementById('login').style.display='flex';}
+window.addEventListener('load',async()=>{const {data:{session}}=await SB.auth.getSession();if(session)await boot(session);});
+
+// ── INIT ─────────────────────────────────────────────────────────
+async function initApp(){
+  const init=CU.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('sb-av').textContent=init;
+  document.getElementById('sb-name').textContent=CU.name;
+  const rm={owner:'Owner',regional:'Regional Mgr',gm:'GM'};
+  const rc={owner:'rp-owner',regional:'rp-regional',gm:'rp-gm'};
+  const b=document.getElementById('sb-role');b.textContent=rm[CU.role];b.className='rpill '+rc[CU.role];
+  await loadLocs();
+  await loadIngs();
+  await loadRecs();
+  console.log('Data loaded - LOCS:', LOCS.length, 'INGS:', INGS.length, 'RECS:', RECS.length);
+  if(!curLoc&&LOCS.length)curLoc=LOCS[0].id;
+  buildLocList();
+  buildLocTabs();
+  upWD();
+  // Show dashboard by default
+  PAGES.forEach(p=>{const pg=document.getElementById('p-'+p);if(pg)pg.style.display='none';});
+  const dash=document.getElementById('p-dash');if(dash)dash.style.display='block';
+  document.getElementById('n-dash')?.classList.add('on');
+  if(CU.role==='gm'){
+    document.getElementById('n-settings').classList.add('locked');
+    document.getElementById('lbl-admin').style.display='none';
+    document.getElementById('n-items').classList.add('locked');
+    document.getElementById('btn-add-rec').style.display='none';
+    document.getElementById('btn-add-item').style.display='none';
+    document.getElementById('lbl-locs').style.display='none';
+    document.getElementById('loc-list').style.display='none';
+    document.getElementById('c-locs').style.display='none';
+  }
+  await buildDash();
+  checkSq();
+}
+
+// ── DATA ─────────────────────────────────────────────────────────
+async function loadLocs(){
+  const {data,error}=await SB.from('locations').select('*').eq('active',true).order('sort_order');
+  if(error)console.error('loadLocs error:',error);
+  LOCS=data||[];
+  console.log('Loaded locations:', LOCS.length);
+  if(CU.role==='gm'&&CU.location_id)LOCS=LOCS.filter(l=>l.id===CU.location_id);
+}
+async function loadIngs(){
+  const {data,error}=await SB.from('ingredients').select('*').eq('active',true).order('category,name');
+  if(error)console.error('loadIngs error:',error);
+  INGS=data||[];
+  console.log('Loaded ingredients:', INGS.length);
+}
+async function loadRecs(){const {data}=await SB.from('recipes').select('*,recipe_ingredients(*,ingredients(*))').eq('active',true).order('category,name');RECS=data||[];}
+async function getSales(locId,wk){
+  const k=locId+'_'+isoD(wk); if(salesCache[k])return salesCache[k];
+  const {data}=await SB.from('sales_data').select('*,recipes(*,recipe_ingredients(*,ingredients(*)))').eq('location_id',locId).eq('week_start',isoD(wk));
+  salesCache[k]=data||[]; return salesCache[k];
+}
+async function getInv(locId,wk){
+  const k=locId+'_'+isoD(wk); if(invCache[k])return invCache[k];
+  const {data}=await SB.from('inventory_counts').select('*').eq('location_id',locId).eq('week_start',isoD(wk));
+  invCache[k]=data||[]; return invCache[k];
+}
+
+// ── MATH ─────────────────────────────────────────────────────────
+// Effective cost per unit = unit_cost / yield_pct
+function effCost(ing){return ing.unit_cost/(ing.yield_pct||1);}
+// Recipe cost uses effective cost of each ingredient
+function recCost(rec){return(rec.recipe_ingredients||[]).reduce((s,ri)=>s+ri.quantity*(ri.ingredients?effCost(ri.ingredients):0),0);}
+function theorUse(ingId,sales){return sales.reduce((s,sd)=>{const ri=(sd.recipes?.recipe_ingredients||[]).find(x=>x.ingredient_id===ingId);return s+(ri?ri.quantity*(sd.units_sold||0):0);},0);}
+const f$=(n,d=2)=>'$'+(n||0).toFixed(d);
+const fp=n=>((n||0)*100).toFixed(1)+'%';
+const lc=p=>p>0.2?'lbad':p>0.1?'lwarn':'lok';
+const bc=p=>p>0.2?'b-bad':p>0.1?'b-warn':'b-ok';
+const bl=p=>p>0.2?'Investigate':p>0.1?'Monitor':'OK';
+
+// ── NAV ──────────────────────────────────────────────────────────
+const PAGES=['dash','sales','inv','cogs','rec','items','settings'];
+function go(name,el){
+  if(el&&el.classList&&el.classList.contains('locked')){toast('⚠ Access restricted');return;}
+  // First switch pages synchronously
+  PAGES.forEach(p=>{const pg=document.getElementById('p-'+p);if(pg)pg.style.display='none';});
+  document.querySelectorAll('.sbi,.bni').forEach(e=>e.classList.remove('on'));
+  const pg=document.getElementById('p-'+name);
+  if(pg){pg.style.display='block';}
+  document.getElementById('n-'+name)?.classList.add('on');
+  document.querySelectorAll('.bni').forEach(b=>{if(b.dataset.p===name)b.classList.add('on');});
+  document.getElementById('mscroll')?.scrollTo(0,0);
+  // Then load data async
+  refreshPage(name);
+}
+async function refreshPage(n){
+  if(n==='dash')await buildDash();
+  if(n==='sales')await buildSalesPage();
+  if(n==='inv')await buildInvForm();
+  if(n==='cogs')await buildCOGS();
+  if(n==='rec'){await loadRecs();renderRecipes();}
+  if(n==='items'){await loadIngs();buildItemTable();}
+  if(n==='settings')buildSettings();
+}
+function refreshPage_current(){const a=document.querySelector('.page.on');if(a)refreshPage(a.id.replace('p-',''));}
+
+// ── LOC LIST / TABS ───────────────────────────────────────────────
+function buildLocList(){
+  document.getElementById('loc-list').innerHTML=LOCS.map(l=>
+    `<div class="loc-link${l.id===curLoc?' on':''}" onclick="selLoc('${l.id}',this)">
+      <div class="loc-dot" style="background:${l.color}"></div>${l.short_name||l.name}</div>`
+  ).join('');
+}
+function selLoc(id,el){curLoc=id;salesCache={};invCache={};document.querySelectorAll('.loc-link').forEach(x=>x.classList.remove('on'));el?.classList.add('on');refreshPage_current();toast(LOCS.find(l=>l.id===id)?.name||id);}
+function buildLocTabs(){
+  if(CU.role==='gm')return;
+  ['sales-loc-tabs','inv-loc-tabs'].forEach(tid=>{
+    const el=document.getElementById(tid);if(!el)return;
+    el.innerHTML=LOCS.map(l=>`<button class="btn btn-sm${l.id===curLoc?' btn-a':' btn-s'}" onclick="selLocTab('${l.id}',this,'${tid}')">
+      <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${l.color};margin-right:4px"></span>${l.short_name||l.name}</button>`).join('');
+  });
+}
+function selLocTab(id,btn,tid){curLoc=id;salesCache={};invCache={};document.getElementById(tid)?.querySelectorAll('button').forEach(b=>{b.classList.remove('btn-a');b.classList.add('btn-s');});btn.classList.remove('btn-s');btn.classList.add('btn-a');refreshPage_current();}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+async function buildDash(){
+  const locId=curLoc||LOCS[0]?.id; if(!locId)return;
+  const [sales,counts]=await Promise.all([getSales(locId,curWeek),getInv(locId,curWeek)]);
+  document.getElementById('dash-meta').textContent=(LOCS.find(l=>l.id===locId)?.name||'')+'  ·  '+fmtW(curWeek);
+  const totalNet=sales.reduce((s,sd)=>s+(sd.net_sales||0),0);
+  const totalCOGS=sales.reduce((s,sd)=>s+(sd.units_sold||0)*recCost(sd.recipes||{}),0);
+  const cogsPct=totalNet>0?totalCOGS/totalNet:0;
+  let totLoss=0,totAct=0;
+  INGS.forEach(ing=>{
+    const inv=counts.find(c=>c.ingredient_id===ing.id); if(!inv)return;
+    const act=(inv.opening||0)+(inv.received||0)-(inv.closing||0);
+    const th=theorUse(ing.id,sales); const v=act-th;
+    if(act>0){totAct+=act*effCost(ing);totLoss+=Math.max(0,v)*effCost(ing);}
+  });
+  const lossR=totAct>0?totLoss/totAct:0;
+  document.getElementById('dash-kpis').innerHTML=`
+    <div class="kpi"><div class="klbl">Net Sales</div><div class="kval">${f$(totalNet,0)}</div><div class="ksub">${sales.reduce((s,sd)=>s+(sd.units_sold||0),0)} items sold</div></div>
+    <div class="kpi"><div class="klbl">Theor. COGS</div><div class="kval ${cogsPct>0.35?'bad':cogsPct<0.28?'ok':''}">${f$(totalCOGS,0)}</div><div class="ksub">${fp(cogsPct)} of net sales</div></div>
+    <div class="kpi"><div class="klbl">COGS %</div><div class="kval ${cogsPct>0.35?'bad':cogsPct<0.28?'ok':''}">${fp(cogsPct)}</div><div class="ksub">Target 28–32%</div></div>
+    <div class="kpi"><div class="klbl">Loss Rate</div><div class="kval ${lossR>0.1?'bad':lossR>0.05?'warn':'ok'}">${fp(lossR)}</div><div class="ksub">Target &lt;5%</div></div>`;
+  const sorted=[...sales].sort((a,b)=>(b.net_sales||0)-(a.net_sales||0)).slice(0,6);
+  document.getElementById('t-top').innerHTML=sorted.length?sorted.map(s=>`<tr><td>${s.recipes?.name||'—'}</td><td class="tar">${s.units_sold||0}</td><td class="tar">${f$(s.net_sales||0)}</td></tr>`).join(''):'<tr><td colspan="3" class="dim">No data yet</td></tr>';
+  const alerts=INGS.map(ing=>{
+    const inv=counts.find(c=>c.ingredient_id===ing.id);if(!inv)return null;
+    const act=(inv.opening||0)+(inv.received||0)-(inv.closing||0);
+    const lp=act>0?(act-theorUse(ing.id,sales))/act:0;
+    return lp>0.1?{name:ing.name,lp}:null;
+  }).filter(Boolean).sort((a,b)=>b.lp-a.lp).slice(0,5);
+  document.getElementById('t-alerts').innerHTML=alerts.length?alerts.map(a=>`<tr><td>${a.name}</td><td class="tar"><span class="badge ${bc(a.lp)}">${fp(a.lp)}</span></td></tr>`).join(''):'<tr><td colspan="2" style="color:var(--ok)">No alerts — all good!</td></tr>';
+  if(CU.role!=='gm'){
+    const rows=await Promise.all(LOCS.map(async l=>{
+      const ls=await getSales(l.id,curWeek);const lc2=await getInv(l.id,curWeek);
+      const net=ls.reduce((s,sd)=>s+(sd.net_sales||0),0);
+      const cogs=ls.reduce((s,sd)=>s+(sd.units_sold||0)*recCost(sd.recipes||{}),0);
+      const pct=net>0?cogs/net:0;
+      return`<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${l.color};margin-right:6px"></span>${l.name}</td><td class="tar">${f$(net,0)}</td><td class="tar ${pct>0.35?'lbad':pct>0.32?'lwarn':'lok'}">${fp(pct)}</td><td class="tar">${ls.reduce((s,sd)=>s+(sd.units_sold||0),0)}</td><td><span class="badge ${lc2.length?'b-ok':'b-warn'}">${lc2.length?'Counted':'Pending'}</span></td></tr>`;
+    }));
+    document.getElementById('t-locs').innerHTML=rows.join('');
+  }
+}
+
+// ── SALES PAGE ────────────────────────────────────────────────────
+async function buildSalesPage(){
+  const locId=curLoc||LOCS[0]?.id; if(!locId)return;
+  const sales=await getSales(locId,curWeek);
+  const sm=Object.fromEntries(sales.map(s=>[s.recipe_id,s]));
+  document.getElementById('t-sales').innerHTML=RECS.map(rec=>{
+    const sd=sm[rec.id]||{}; const units=sd.units_sold||0; const net=sd.net_sales||0;
+    const cost=recCost(rec); const cogs=units*cost; const cp=net>0?cogs/net:0;
+    return`<tr><td>${rec.name}</td><td style="color:var(--muted)">${rec.category||'—'}</td>
+      <td class="tar"><input class="iinp" type="number" min="0" step="1" value="${units}" style="width:72px;display:inline-block" onchange="updSalesRow('${rec.id}',this)" id="su-${rec.id}"/></td>
+      <td class="tar" id="sn-${rec.id}">${f$(net)}</td>
+      <td class="tar">${f$(cogs)}</td>
+      <td class="tar ${cp>0.35?'lbad':cp>0.32?'lwarn':'lok'}">${fp(cp)}</td></tr>`;
+  }).join('')||'<tr><td colspan="6" class="dim">No recipes yet</td></tr>';
+}
+function updSalesRow(recId,inp){
+  const rec=RECS.find(r=>r.id===recId);if(!rec)return;
+  document.getElementById('sn-'+recId).textContent=f$((parseInt(inp.value)||0)*(rec.price||0));
+}
+async function saveSales(){
+  const locId=curLoc||LOCS[0]?.id;if(!locId)return;
+  const rows=RECS.map(rec=>{
+    const inp=document.getElementById('su-'+rec.id);
+    const units=inp?parseInt(inp.value)||0:0;
+    return{location_id:locId,week_start:isoD(curWeek),recipe_id:rec.id,units_sold:units,gross_sales:units*(rec.price||0),net_sales:units*(rec.price||0),source:'manual'};
+  });
+  const {error}=await SB.from('sales_data').upsert(rows,{onConflict:'location_id,week_start,recipe_id'});
+  if(error){toast('⚠ Save failed');return;}
+  delete salesCache[locId+'_'+isoD(curWeek)]; toast('✓ Sales saved');
+}
+
+// ── SQUARE SYNC ───────────────────────────────────────────────────
+async function checkSq(){
+  try{
+    const r=await fetch(`${SQ_API}?action=test`);const d=await r.json();
+    const dot=document.getElementById('sq-dot');const msg=document.getElementById('sq-msg');
+    dot.className='sdot'+(d.ok?'':' w');
+    msg.textContent=d.ok?`Square connected · ${d.location_count} location(s) found`:'Square not connected — add your token in Settings';
+  }catch{document.getElementById('sq-msg').textContent='Square status unknown';}
+}
+async function squareSync(){
+  const locId=curLoc||LOCS[0]?.id;
+  const loc=LOCS.find(l=>l.id===locId);
+  if(!loc?.square_location_id){toast('⚠ Set Square Location ID in Settings → Locations');return;}
+  toast('Pulling from Square…');
+  try{
+    const r=await fetch(`${SQ_API}?action=sales&location_id=${loc.square_location_id}&week_start=${isoD(curWeek)}`);
+    const d=await r.json();
+    if(!d.items?.length){toast('⚠ No data returned from Square');return;}
+    const rows=[];
+    for(const item of d.items){
+      const rec=RECS.find(r=>r.square_item_name&&item.name.toLowerCase().includes(r.square_item_name.toLowerCase()));
+      if(rec)rows.push({location_id:locId,week_start:isoD(curWeek),recipe_id:rec.id,units_sold:item.units_sold,gross_sales:item.gross_sales,net_sales:item.net_sales,discounts:item.discounts,source:'square_api',synced_at:new Date().toISOString()});
+    }
+    if(rows.length){
+      await SB.from('sales_data').upsert(rows,{onConflict:'location_id,week_start,recipe_id'});
+      delete salesCache[locId+'_'+isoD(curWeek)];
+      buildSalesPage();toast(`✓ Synced ${rows.length} items from Square`);
+    }else toast('⚠ No matching recipes found — check Square Item Name in recipe settings');
+  }catch(e){toast('⚠ Sync failed: '+e.message);}
+}
+async function saveSqConfig(){
+  const tok=document.getElementById('sq-tok').value.trim();
+  const env=document.getElementById('sq-env').value;
+  if(!tok){toast('⚠ Enter your Square token');return;}
+  await SB.from('square_config').upsert({id:1,access_token:tok,environment:env,updated_at:new Date().toISOString()});
+  document.getElementById('sq-res').textContent='Testing…';
+  try{
+    const r=await fetch(`${SQ_API}?action=test`);const d=await r.json();
+    document.getElementById('sq-res').textContent=d.ok?`✓ Connected · ${d.location_count} locations`:'✗ Failed';
+    if(d.ok){toast('✓ Square connected!');checkSq();}
+  }catch{document.getElementById('sq-res').textContent='✗ Error';}
+}
+
+// ── INVENTORY FORM ────────────────────────────────────────────────
+async function buildInvForm(){
+  const locId=curLoc||LOCS[0]?.id;if(!locId||!INGS.length)return;
+  document.getElementById('inv-meta').textContent=(LOCS.find(l=>l.id===locId)?.name||'')+' · '+fmtW(curWeek);
+  const [counts,sales]=await Promise.all([getInv(locId,curWeek),getSales(locId,curWeek)]);
+  invSales=sales;
+  const cm2=Object.fromEntries(counts.map(c=>[c.ingredient_id,c]));
+  invState=Object.fromEntries(INGS.map(i=>[i.id,{ingredient_id:i.id,...(cm2[i.id]||{opening:0,received:0,closing:0})}]));
+  const cats=[...new Set(INGS.map(i=>i.category))].sort();
+  document.getElementById('inv-form').innerHTML=cats.map(cat=>{
+    const items=INGS.filter(i=>i.category===cat);
+    return`<div style="margin-bottom:14px"><div class="icat">${cat}</div>${items.map(ing=>{
+      const inv=invState[ing.id]||{opening:0,received:0,closing:0};
+      const act=(inv.opening||0)+(inv.received||0)-(inv.closing||0);
+      const th=theorUse(ing.id,sales); const v=act-th; const lp=act>0?v/act:0;
+      const ec=effCost(ing);
+      return`<div class="icard">
+        <div class="iname">${ing.name} <span class="dim">(${ing.unit}${ing.yield_pct<1?` · yield ${Math.round(ing.yield_pct*100)}%`:''})</span></div>
+        <div class="i3">
+          <div><label>Opening</label><input class="iinp" type="number" min="0" step="any" value="${inv.opening||0}" onchange="updInv('${ing.id}',this,'opening')" id="io-${ing.id}"/></div>
+          <div><label>+ Received</label><input class="iinp" type="number" min="0" step="any" value="${inv.received||0}" onchange="updInv('${ing.id}',this,'received')" id="ir-${ing.id}"/></div>
+          <div><label>− Closing</label><input class="iinp" type="number" min="0" step="any" value="${inv.closing||0}" onchange="updInv('${ing.id}',this,'closing')" id="ic-${ing.id}"/></div>
+        </div>
+        <div class="ires">
+          <span>Actual: <b id="ia-${ing.id}">${act.toFixed(1)}</b> ${ing.unit}</span>
+          <span>Theor: <b>${th.toFixed(1)}</b> ${ing.unit}</span>
+          <span class="${lc(lp)}">Variance: <b id="iv-${ing.id}">${v>0?'+':''}${v.toFixed(1)}</b></span>
+          <span class="${lc(lp)}">Loss: <b id="ilp-${ing.id}">${fp(lp)}</b></span>
+          <span class="dim">Loss$: <b id="ilds-${ing.id}">${lp>0?f$(Math.max(0,v)*ec):'—'}</b></span>
+        </div></div>`;
+    }).join('')}</div>`;
+  }).join('');
+}
+function updInv(ingId,inp,field){
+  if(!invState[ingId])invState[ingId]={ingredient_id:ingId,opening:0,received:0,closing:0};
+  invState[ingId][field]=parseFloat(inp.value)||0;
+  const inv=invState[ingId]; const ing=INGS.find(i=>i.id===ingId); if(!ing)return;
+  const act=(inv.opening||0)+(inv.received||0)-(inv.closing||0);
+  const th=theorUse(ingId,invSales); const v=act-th; const lp=act>0?v/act:0;
+  const lclass=lc(lp);
+  const s=(id,val,cls)=>{const el=document.getElementById(id);if(el){el.textContent=val;if(cls)el.parentElement.className=lclass;}};
+  document.getElementById('ia-'+ingId).textContent=act.toFixed(1);
+  const vel=document.getElementById('iv-'+ingId);if(vel){vel.textContent=(v>0?'+':'')+v.toFixed(1);vel.parentElement.className=lclass;}
+  const lel=document.getElementById('ilp-'+ingId);if(lel){lel.textContent=fp(lp);lel.parentElement.className=lclass;}
+  const del=document.getElementById('ilds-'+ingId);if(del)del.textContent=lp>0?f$(Math.max(0,v)*effCost(ing)):'—';
+}
+async function saveInv(){
+  const locId=curLoc||LOCS[0]?.id;if(!locId||!Object.keys(invState).length)return;
+  const rows=Object.values(invState).map(inv=>({location_id:locId,week_start:isoD(curWeek),ingredient_id:inv.ingredient_id,opening:inv.opening||0,received:inv.received||0,closing:inv.closing||0,submitted_by:CU.id,submitted_at:new Date().toISOString()}));
+  const {error}=await SB.from('inventory_counts').upsert(rows,{onConflict:'location_id,week_start,ingredient_id'});
+  if(error){toast('⚠ Save failed: '+error.message);return;}
+  delete invCache[locId+'_'+isoD(curWeek)]; toast('✓ Count submitted');
+}
+function resetInv(){invState={};buildInvForm();}
+
+// ── COGS REPORT ───────────────────────────────────────────────────
+async function buildCOGS(){
+  const locId=curLoc||LOCS[0]?.id;if(!locId)return;
+  const [sales,counts]=await Promise.all([getSales(locId,curWeek),getInv(locId,curWeek)]);
+  const totalNet=sales.reduce((s,sd)=>s+(sd.net_sales||0),0);
+  const totalCOGS=sales.reduce((s,sd)=>s+(sd.units_sold||0)*recCost(sd.recipes||{}),0);
+  const cogsPct=totalNet>0?totalCOGS/totalNet:0;
+  let totLoss=0,totAct=0;
+  const varRows=INGS.map(ing=>{
+    const inv=counts.find(c=>c.ingredient_id===ing.id);
+    const act=inv?(inv.opening||0)+(inv.received||0)-(inv.closing||0):0;
+    const th=theorUse(ing.id,sales); const v=act-th; const lp=act>0?v/act:0;
+    const lossVal=Math.max(0,v)*effCost(ing);
+    if(act>0){totAct+=act*effCost(ing);totLoss+=lossVal;}
+    return{ing,act,th,v,lp,lossVal};
+  });
+  const lossR=totAct>0?totLoss/totAct:0;
+  document.getElementById('cogs-kpis').innerHTML=`
+    <div class="kpi"><div class="klbl">Net Sales</div><div class="kval">${f$(totalNet)}</div></div>
+    <div class="kpi"><div class="klbl">Theor. COGS</div><div class="kval ${cogsPct>0.35?'bad':''}">${f$(totalCOGS)}</div><div class="ksub">${fp(cogsPct)}</div></div>
+    <div class="kpi"><div class="klbl">Loss / Waste</div><div class="kval ${lossR>0.1?'bad':lossR>0.05?'warn':''}">${f$(totLoss)}</div><div class="ksub">${fp(lossR)} loss rate</div></div>
+    <div class="kpi"><div class="klbl">COGS %</div><div class="kval ${cogsPct>0.35?'bad':cogsPct<0.28?'ok':''}">${fp(cogsPct)}</div><div class="ksub">Target 28–32%</div></div>`;
+  document.getElementById('t-cogs-rec').innerHTML=RECS.map(rec=>{
+    const cost=recCost(rec);const pct=rec.price>0?cost/rec.price:0;
+    return`<tr><td>${rec.name}</td><td class="tar">${f$(cost)}</td><td class="tar">${f$(rec.price||0)}</td><td class="tar"><span class="badge ${bc(pct)}">${fp(pct)}</span></td></tr>`;
+  }).join('');
+  const catMap={};
+  varRows.forEach(({ing,v,act})=>{if(!catMap[ing.category])catMap[ing.category]={th:0,loss:0,act:0};catMap[ing.category].th+=theorUse(ing.id,sales)*effCost(ing);catMap[ing.category].loss+=Math.max(0,v)*effCost(ing);catMap[ing.category].act+=act*effCost(ing);});
+  document.getElementById('t-cogs-cat').innerHTML=Object.entries(catMap).map(([cat,d])=>{const lp=d.act>0?d.loss/d.act:0;return`<tr><td>${cat}</td><td class="tar">${f$(d.th)}</td><td class="tar">${fp(lp)}</td><td><span class="badge ${bc(lp)}">${bl(lp)}</span></td></tr>`;}).join('');
+  document.getElementById('t-cogs-var').innerHTML=varRows.filter(r=>r.act>0).sort((a,b)=>b.lp-a.lp).map(({ing,act,th,v,lp,lossVal})=>
+    `<tr><td>${ing.name}</td><td class="dim">${ing.category}</td><td class="tar dim">${Math.round((ing.yield_pct||1)*100)}%</td><td class="tar">${act.toFixed(1)}</td><td class="tar">${th.toFixed(1)}</td><td class="tar ${lc(lp)}">${v>0?'+':''}${v.toFixed(1)}</td><td class="tar ${lc(lp)}">${fp(lp)}</td><td class="tar ${lc(lp)}">${lossVal>0?f$(lossVal):'—'}</td></tr>`
+  ).join('')||'<tr><td colspan="8" class="dim">Submit inventory count first</td></tr>';
+}
+
+// ── RECIPE GRID ───────────────────────────────────────────────────
+function renderRecipes(){
+  const canEdit=CU?.role!=='gm';
+  document.getElementById('rec-meta').textContent=canEdit?'Edit recipes · Regional Manager access':'View recipes';
+  const catFilter=document.getElementById('cat-filter')?.value||'';
+  const cats=[...new Set(RECS.map(r=>r.category||'Other'))];
+  const cf=document.getElementById('cat-filter');
+  if(cf&&cf.options.length<=1){cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;cf.appendChild(o);});}
+  const filtered=catFilter?RECS.filter(r=>r.category===catFilter):RECS;
+  console.log('renderRecipes called, RECS:', RECS.length);
+  document.getElementById('rec-grid').innerHTML=filtered.map(rec=>{
+    const cost=recCost(rec); const margin=rec.price>0?(rec.price-cost)/rec.price:0;
+    const ingStr=(rec.recipe_ingredients||[]).map(ri=>`${ri.ingredients?.name||'?'} ${ri.quantity}${ri.unit||ri.ingredients?.unit||''}`).join(' · ');
+    return`<div class="rcard"${canEdit?` onclick="openRecModal('${rec.id}')"`:''}${!canEdit?' style="cursor:default"':''}>
+      <div class="rphoto">${rec.photo_url?`<img src="${rec.photo_url}" alt="${rec.name}"/>`:'📷'}</div>
+      <div class="rbody">
+        <div class="rname">${rec.name}</div><div class="rcat">${rec.category||'—'}</div>
+        <div style="font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:7px">${ingStr}</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span class="dim">Cost: ${f$(cost)}</span><span>Price: ${f$(rec.price||0)}</span></div>
+        <div class="mbar"><div class="mfill" style="width:${Math.min(margin*100,100)}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span class="dim">Margin</span><span style="color:var(--ok)">${fp(margin)}</span></div>
+      </div></div>`;
+  }).join('')||'<div class="empty"><div class="eico">◉</div><h3>No recipes yet</h3><p>Add your first recipe to get started.</p></div>';
+}
+
+
+// ── SQUARE CATALOG ────────────────────────────────────────────────
+let squareMenuItems = [];
+
+async function loadSquareMenu() {
+  const btn = document.getElementById('btn-load-sq');
+  const sel = document.getElementById('rf-sq-select');
+  btn.textContent = '↺ Loading…'; btn.disabled = true;
+  try {
+    const r = await fetch(`${SQ_API}?action=catalog`);
+    const d = await r.json();
+    squareMenuItems = d.items || [];
+    sel.innerHTML = '<option value="">-- Select from Square --</option>' +
+      squareMenuItems.map(item =>
+        `<option value="${item.id}" data-name="${item.name}" data-price="${item.variations?.[0]?.price||0}">${item.name}${item.variations?.[0]?.price ? ' — $'+(item.variations[0].price).toFixed(2) : ''}</option>`
+      ).join('');
+    toast(`✓ Loaded ${squareMenuItems.length} items from Square`);
+  } catch(e) {
+    toast('⚠ Could not load Square menu: '+e.message);
+  }
+  btn.textContent = '↺ Load'; btn.disabled = false;
+}
+
+function onSquareItemSelect(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  const name  = opt.dataset.name;
+  const price = parseFloat(opt.dataset.price) || 0;
+  document.getElementById('rf-sq').value    = name;
+  document.getElementById('rf-name').value  = document.getElementById('rf-name').value || name;
+  document.getElementById('rf-price').value = document.getElementById('rf-price').value || price;
+}
+
+// ── RECIPE MODAL ──────────────────────────────────────────────────
+function openRecModal(recId){
+  if(CU.role==='gm')return; ingRowN=0; photoFile=null; photoPreviewUrl=null;
+  // Auto-load Square menu items
+  if(squareMenuItems.length===0) loadSquareMenu();
+  document.getElementById('rf-id').value=recId||'';
+  document.getElementById('m-rec-title').textContent=recId?'Edit Recipe':'Add Recipe';
+  document.getElementById('btn-del-rec').style.display=recId?'':'none';
+  const rec=recId?RECS.find(r=>r.id===recId):null;
+  document.getElementById('rf-name').value=rec?.name||'';
+  document.getElementById('rf-cat').value=rec?.category||'';
+  document.getElementById('rf-price').value=rec?.price||'';
+  document.getElementById('rf-desc').value=rec?.description||'';
+  document.getElementById('rf-sq').value=rec?.square_item_name||'';
+  document.getElementById('photo-preview').innerHTML=rec?.photo_url
+    ?`<img src="${rec.photo_url}" style="max-height:80px;border-radius:6px"/>`
+    :'<span style="font-size:11px;color:var(--muted)">Click or drag to upload photo</span>';
+  document.getElementById('ing-rows').innerHTML='';
+  if(rec?.recipe_ingredients?.length)rec.recipe_ingredients.forEach(ri=>addIngRow(ri));
+  else addIngRow();
+  om('m-rec');
+}
+function addIngRow(ri){
+  const n=ingRowN++; const d=document.createElement('div');
+  d.className='row';d.style.marginBottom='6px';d.id='ir-'+n;
+  d.innerHTML=`<select class="fi fsel" style="flex:1" id="iri-${n}">${INGS.map(i=>`<option value="${i.id}"${ri?.ingredient_id===i.id?' selected':''}>${i.name} (${i.unit}) — eff. ${f$(effCost(i),4)}/${i.unit}</option>`).join('')}</select>
+    <input class="fi" style="width:80px" type="number" min="0" step="any" id="irq-${n}" placeholder="Qty" value="${ri?.quantity||''}"/>
+    <button class="btn btn-s btn-sm" style="flex-shrink:0" onclick="document.getElementById('ir-${n}').remove()">✕</button>`;
+  document.getElementById('ing-rows').appendChild(d);
+}
+function handlePhotoSelect(inp){if(inp.files[0])previewPhoto(inp.files[0]);}
+function handlePhotoDrop(e){e.preventDefault();this.classList.remove('drag');if(e.dataTransfer.files[0])previewPhoto(e.dataTransfer.files[0]);}
+function previewPhoto(file){
+  photoFile=file;
+  const reader=new FileReader();
+  reader.onload=ev=>{document.getElementById('photo-preview').innerHTML=`<img src="${ev.target.result}" style="max-height:80px;border-radius:6px"/>`;photoPreviewUrl=ev.target.result;};
+  reader.readAsDataURL(file);
+}
+async function saveRec(){
+  const recId=document.getElementById('rf-id').value;
+  const name=document.getElementById('rf-name').value.trim();
+  if(!name){toast('⚠ Enter a recipe name');return;}
+  let photoUrl=null;
+  if(photoFile){
+    const ext=photoFile.name.split('.').pop();
+    const path=`recipes/${Date.now()}.${ext}`;
+    const {error:ue}=await SB.storage.from('recipe-photos').upload(path,photoFile,{contentType:photoFile.type});
+    if(!ue){const {data:pd}=SB.storage.from('recipe-photos').getPublicUrl(path);photoUrl=pd.publicUrl;}
+  }
+  const payload={name,category:document.getElementById('rf-cat').value.trim(),price:parseFloat(document.getElementById('rf-price').value)||0,description:document.getElementById('rf-desc').value.trim(),square_item_name:document.getElementById('rf-sq').value.trim(),updated_at:new Date().toISOString()};
+  if(photoUrl)payload.photo_url=photoUrl;
+  let id=recId;
+  if(recId){await SB.from('recipes').update(payload).eq('id',recId);}
+  else{const {data}=await SB.from('recipes').insert(payload).select().single();id=data?.id;}
+  if(!id){toast('⚠ Save failed');return;}
+  await SB.from('recipe_ingredients').delete().eq('recipe_id',id);
+  const ings=[]; let i=0;
+  while(i<ingRowN){
+    const ingEl=document.getElementById('iri-'+i);const qEl=document.getElementById('irq-'+i);
+    if(ingEl&&qEl&&qEl.value)ings.push({recipe_id:id,ingredient_id:ingEl.value,quantity:parseFloat(qEl.value)||0});
+    i++;
+  }
+  if(ings.length)await SB.from('recipe_ingredients').insert(ings);
+  await loadRecs();renderRecipes();cm('m-rec');toast('✓ Recipe saved');
+}
+async function delRec(){
+  const recId=document.getElementById('rf-id').value;
+  if(!recId||!confirm('Delete this recipe?'))return;
+  await SB.from('recipes').update({active:false}).eq('id',recId);
+  await loadRecs();renderRecipes();cm('m-rec');toast('Recipe removed');
+}
+
+// ── ITEM MASTER ───────────────────────────────────────────────────
+function buildItemTable(){
+  const canEdit=CU?.role!=='gm';
+  console.log('buildItemTable called, INGS:', INGS.length);
+  if(!INGS.length){document.getElementById('t-items').innerHTML='<tr><td colspan="8" class="dim">Loading...</td></tr>';loadIngs().then(()=>buildItemTable());return;}
+  document.getElementById('t-items').innerHTML=INGS.map(ing=>{
+    const ec=effCost(ing);
+    return`<tr>
+      <td><b>${ing.name}</b></td>
+      <td class="dim">${ing.category}</td>
+      <td class="dim">${ing.vendor||'—'}</td>
+      <td class="dim">${ing.unit}</td>
+      <td class="tar">${f$(ing.unit_cost,4)}</td>
+      <td class="tar">${Math.round((ing.yield_pct||1)*100)}%</td>
+      <td class="tar" style="color:var(--accent)">${f$(ec,4)}</td>
+      <td class="tar">${canEdit?`<button class="btn btn-s btn-sm" onclick="openIngModal('${ing.id}')">Edit</button>`:''}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="8" class="dim">No ingredients yet</td></tr>';
+}
+function openIngModal(ingId){
+  if(CU.role==='gm')return;
+  document.getElementById('ing-id').value=ingId||'';
+  document.getElementById('m-ing-title').textContent=ingId?'Edit Ingredient':'Add Ingredient';
+  document.getElementById('btn-del-ing').style.display=ingId?'':'none';
+  const ing=ingId?INGS.find(i=>i.id===ingId):null;
+  document.getElementById('ing-name').value=ing?.name||'';
+  document.getElementById('ing-cat').value=ing?.category||'';
+  document.getElementById('ing-vendor').value=ing?.vendor||'';
+  document.getElementById('ing-unit').value=ing?.unit||'';
+  document.getElementById('ing-cost').value=ing?.unit_cost||'';
+  document.getElementById('ing-yield').value=Math.round((ing?.yield_pct||1)*100);
+  document.getElementById('ing-notes').value=ing?.notes||'';
+  om('m-ing');
+}
+async function saveIng(){
+  const ingId=document.getElementById('ing-id').value;
+  const name=document.getElementById('ing-name').value.trim();if(!name){toast('⚠ Enter a name');return;}
+  const yieldPct=(parseFloat(document.getElementById('ing-yield').value)||100)/100;
+  const payload={name,category:document.getElementById('ing-cat').value.trim(),vendor:document.getElementById('ing-vendor').value.trim(),unit:document.getElementById('ing-unit').value.trim(),unit_cost:parseFloat(document.getElementById('ing-cost').value)||0,yield_pct:yieldPct,notes:document.getElementById('ing-notes').value.trim(),updated_at:new Date().toISOString()};
+  if(ingId)await SB.from('ingredients').update(payload).eq('id',ingId);
+  else await SB.from('ingredients').insert(payload);
+  await loadIngs();buildItemTable();cm('m-ing');toast('✓ Saved');
+}
+async function delIng(){
+  const ingId=document.getElementById('ing-id').value;if(!ingId||!confirm('Delete?'))return;
+  await SB.from('ingredients').update({active:false}).eq('id',ingId);
+  await loadIngs();buildItemTable();cm('m-ing');toast('Item removed');
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────
+async function buildSettings(){
+  if(CU.role==='gm')return;
+  const {data}=await SB.from('square_config').select('*').eq('id',1).single();
+  if(data){document.getElementById('sq-tok').value=data.access_token||'';document.getElementById('sq-env').value=data.environment||'production';}
+  buildLocSettings();buildUsers();
+  const il=document.getElementById('inv-loc');
+  il.innerHTML='<option value="">Select location…</option>'+LOCS.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+}
+function buildLocSettings(){
+  document.getElementById('loc-settings').innerHTML=LOCS.map(l=>`
+    <div style="display:flex;align-items:center;gap:9px;padding:10px 0;border-bottom:1px solid var(--bdr)">
+      <div style="width:9px;height:9px;border-radius:50%;background:${l.color};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${l.name}</div>
+        <div class="dim">${l.address||'No address'}</div>
+        ${l.square_location_id?`<div style="font-size:10px;color:var(--ok)">Square ID: ${l.square_location_id}</div>`:'<div style="font-size:10px;color:var(--warn)">No Square Location ID set</div>'}
+      </div>
+      <button class="btn btn-s btn-sm" onclick="openLocModal('${l.id}')">Edit</button>
+    </div>`).join('');
+}
+async function buildUsers(){
+  const {data}=await SB.from('profiles').select('*').order('name');
+  const rm={owner:'Owner',regional:'Regional Mgr',gm:'GM'};
+  const rc={owner:'rp-owner',regional:'rp-regional',gm:'rp-gm'};
+  document.getElementById('users-list').innerHTML=(data||[]).map(u=>{
+    const init=u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const loc=LOCS.find(l=>l.id===u.location_id);
+    return`<div class="user-row"><div class="urow-av">${init}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${u.name}</div>
+      <div class="dim">${loc?loc.name:u.role!=='gm'?'All locations':'No location'}</div></div>
+      <span class="rpill ${rc[u.role]||'rp-gm'}">${rm[u.role]||u.role}</span></div>`;
+  }).join('')||'<div class="dim">No users yet</div>';
+}
+
+// ── INVITE ────────────────────────────────────────────────────────
+function openInvModal(){
+  ['inv-name','inv-email','inv-pw'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inv-role').value='gm';
+  document.getElementById('inv-err').style.display='none';
+  toggleLocSel();om('m-inv');
+}
+function toggleLocSel(){document.getElementById('inv-loc-g').style.display=document.getElementById('inv-role').value==='gm'?'':'none';}
+async function inviteUser(){
+  const name=document.getElementById('inv-name').value.trim();
+  const email=document.getElementById('inv-email').value.trim().toLowerCase();
+  const pw=document.getElementById('inv-pw').value;
+  const role=document.getElementById('inv-role').value;
+  const locId=document.getElementById('inv-loc').value;
+  const err=document.getElementById('inv-err');err.style.display='none';
+  if(!name||!email||!pw){err.textContent='All fields required.';err.style.display='block';return;}
+  if(pw.length<8){err.textContent='Password min 8 characters.';err.style.display='block';return;}
+  if(role==='gm'&&!locId){err.textContent='Select a location for GM.';err.style.display='block';return;}
+  const {error}=await SB.auth.signUp({email,password:pw,options:{data:{name,role,location_id:locId||null}}});
+  if(error){err.textContent=error.message;err.style.display='block';return;}
+  cm('m-inv');buildUsers();toast(`✓ ${name} account created`);
+}
+
+// ── LOCATION MODAL ────────────────────────────────────────────────
+function openLocModal(id){
+  editLocId=id||null;
+  document.getElementById('m-loc-title').textContent=id?'Edit Location':'Add Location';
+  document.getElementById('btn-del-loc').style.display=id?'':'none';
+  const loc=id?LOCS.find(l=>l.id===id):null;
+  document.getElementById('lf-name').value=loc?.name||'';
+  document.getElementById('lf-short').value=loc?.short_name||'';
+  document.getElementById('lf-addr').value=loc?.address||'';
+  document.getElementById('lf-sq').value=loc?.square_location_id||'';
+  locColor=loc?.color||'#C8A882';
+  document.querySelectorAll('.csw').forEach(s=>s.classList.toggle('on',s.dataset.c===locColor));
+  om('m-loc');
+}
+function pickC(el){locColor=el.dataset.c;document.querySelectorAll('.csw').forEach(s=>s.classList.toggle('on',s===el));}
+async function saveLoc(){
+  const name=document.getElementById('lf-name').value.trim();if(!name){toast('⚠ Enter a name');return;}
+  const payload={name,short_name:document.getElementById('lf-short').value.trim()||name,address:document.getElementById('lf-addr').value.trim(),square_location_id:document.getElementById('lf-sq').value.trim()||null,color:locColor,active:true};
+  if(editLocId){await SB.from('locations').update(payload).eq('id',editLocId);}
+  else{const newId=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,8)+Date.now().toString().slice(-4);payload.id=newId;payload.sort_order=LOCS.length+1;await SB.from('locations').insert(payload);}
+  await loadLocs();buildLocList();buildLocTabs();buildLocSettings();cm('m-loc');toast(editLocId?'Location updated':`${name} added`);
+}
+async function delLoc(){
+  if(!editLocId||!confirm('Remove this location?'))return;
+  await SB.from('locations').update({active:false}).eq('id',editLocId);
+  await loadLocs();if(curLoc===editLocId)curLoc=LOCS[0]?.id||null;
+  buildLocList();buildLocTabs();buildLocSettings();cm('m-loc');toast('Location removed');
+}
+
+// ── MODALS ────────────────────────────────────────────────────────
+const om=id=>document.getElementById(id).classList.add('open');
+const cm=id=>document.getElementById(id).classList.remove('open');
+document.addEventListener('click',e=>{if(e.target.classList.contains('moverlay'))cm(e.target.id);});
+
+// ── TOAST ─────────────────────────────────────────────────────────
+let _tt;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),3200);}
+</script>
+</body>
+</html>
