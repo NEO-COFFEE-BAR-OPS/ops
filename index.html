@@ -460,15 +460,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="fg"><label class="flbl">Description</label><input class="fi" id="rf-desc" placeholder="Short description (optional)"/></div>
     <div class="fg">
       <label class="flbl">Square Menu Item</label>
-      <div style="display:flex;gap:8px">
-        <select class="fi fsel" id="rf-sq-select" style="flex:1" onchange="onSquareItemSelect(this)">
-          <option value="">-- Select from Square or type below --</option>
-        </select>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input class="fi" id="sq-search" placeholder="Search Square menu…" oninput="filterSquareMenu(this.value)" style="flex:1"/>
         <button class="btn btn-s btn-sm" onclick="loadSquareMenu()" id="btn-load-sq" style="white-space:nowrap">↺ Load</button>
       </div>
-      <div style="margin-top:6px">
-        <input class="fi" id="rf-sq" placeholder="Square item name (auto-filled or type manually)" style="margin-top:4px"/>
-      </div>
+      <div id="sq-results" style="display:none;background:rgba(0,0,0,.4);border:1px solid var(--bdr2);border-radius:var(--r);max-height:200px;overflow-y:auto;margin-bottom:6px"></div>
+      <input class="fi" id="rf-sq" placeholder="Square item name (auto-filled or type manually)"/>
     </div>
     <!-- Photo upload -->
     <div class="fg">
@@ -987,31 +984,47 @@ let squareMenuItems = [];
 
 async function loadSquareMenu() {
   const btn = document.getElementById('btn-load-sq');
-  const sel = document.getElementById('rf-sq-select');
   btn.textContent = '↺ Loading…'; btn.disabled = true;
   try {
     const r = await fetch(`${SQ_API}?action=catalog`);
     const d = await r.json();
     squareMenuItems = d.items || [];
-    sel.innerHTML = '<option value="">-- Select from Square --</option>' +
-      squareMenuItems.map(item =>
-        `<option value="${item.id}" data-name="${item.name}" data-price="${item.variations?.[0]?.price||0}">${item.name}${item.variations?.[0]?.price ? ' — $'+(item.variations[0].price).toFixed(2) : ''}</option>`
-      ).join('');
     toast(`✓ Loaded ${squareMenuItems.length} items from Square`);
+    document.getElementById('sq-search').placeholder = `Search ${squareMenuItems.length} Square items…`;
   } catch(e) {
     toast('⚠ Could not load Square menu: '+e.message);
   }
   btn.textContent = '↺ Load'; btn.disabled = false;
 }
 
+function filterSquareMenu(query) {
+  const res = document.getElementById('sq-results');
+  if (!query.trim() || !squareMenuItems.length) { res.style.display='none'; return; }
+  const filtered = squareMenuItems.filter(i => i.name.toLowerCase().includes(query.toLowerCase())).slice(0, 20);
+  if (!filtered.length) { res.style.display='none'; return; }
+  res.style.display = 'block';
+  res.innerHTML = filtered.map(item => {
+    const price = item.variations?.[0]?.price || 0;
+    return `<div onclick="pickSquareItem('${item.id}','${item.name.replace(/'/g,"\'")}',${price})"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--bdr);transition:background .1s"
+      onmouseover="this.style.background='rgba(255,255,255,.06)'"
+      onmouseout="this.style.background=''"
+    >${item.name}${price ? ` <span style="color:var(--muted);font-size:11px">— $${price.toFixed(2)}</span>` : ''}</div>`;
+  }).join('');
+}
+
+function pickSquareItem(id, name, price) {
+  document.getElementById('rf-sq').value    = name;
+  document.getElementById('sq-search').value = name;
+  document.getElementById('sq-results').style.display = 'none';
+  if (!document.getElementById('rf-name').value)  document.getElementById('rf-name').value  = name;
+  if (!document.getElementById('rf-price').value) document.getElementById('rf-price').value = price;
+}
+
 function onSquareItemSelect(sel) {
   const opt = sel.options[sel.selectedIndex];
   if (!opt.value) return;
-  const name  = opt.dataset.name;
-  const price = parseFloat(opt.dataset.price) || 0;
-  document.getElementById('rf-sq').value    = name;
-  document.getElementById('rf-name').value  = document.getElementById('rf-name').value || name;
-  document.getElementById('rf-price').value = document.getElementById('rf-price').value || price;
+  pickSquareItem(opt.value, opt.dataset.name, parseFloat(opt.dataset.price)||0);
 }
 
 // ── RECIPE MODAL ──────────────────────────────────────────────────
@@ -1028,6 +1041,7 @@ function openRecModal(recId){
   document.getElementById('rf-price').value=rec?.price||'';
   document.getElementById('rf-desc').value=rec?.description||'';
   document.getElementById('rf-sq').value=rec?.square_item_name||'';
+  document.getElementById('sq-search').value=rec?.square_item_name||'';
   document.getElementById('photo-preview').innerHTML=rec?.photo_url
     ?`<img src="${rec.photo_url}" style="max-height:80px;border-radius:6px"/>`
     :'<span style="font-size:11px;color:var(--muted)">Click or drag to upload photo</span>';
