@@ -840,10 +840,22 @@ async function squareSync(){
     const d=await r.json();
     if(!d.items?.length){toast('⚠ No data returned from Square');return;}
     const rows=[];
+    const matched=new Set();
     for(const item of d.items){
-      const rec=RECS.find(r=>r.square_item_name&&item.name.toLowerCase().includes(r.square_item_name.toLowerCase()));
-      if(rec)rows.push({location_id:locId,week_start:isoD(curWeek),recipe_id:rec.id,units_sold:item.units_sold,gross_sales:item.gross_sales,net_sales:item.net_sales,discounts:item.discounts,source:'square_api',synced_at:new Date().toISOString()});
+      // Match: Square item name == recipe square_item_name (exact, case-insensitive)
+      const rec=RECS.find(r=>{
+        if(!r.square_item_name)return false;
+        const sq=r.square_item_name.trim().toLowerCase();
+        const it=item.name.trim().toLowerCase();
+        return sq===it;
+      });
+      if(rec&&!matched.has(rec.id)){
+        matched.add(rec.id);
+        rows.push({location_id:locId,week_start:isoD(curWeek),recipe_id:rec.id,units_sold:item.units_sold,gross_sales:item.gross_sales,net_sales:item.net_sales,discounts:item.discounts,source:'square_api',synced_at:new Date().toISOString()});
+      }
     }
+    console.log('Square items:', d.items.length, 'Matched:', rows.length);
+    console.log('Unmatched:', d.items.filter(item=>!RECS.find(r=>r.square_item_name?.toLowerCase()===item.name.toLowerCase())).map(i=>i.name));
     if(rows.length){
       await SB.from('sales_data').upsert(rows,{onConflict:'location_id,week_start,recipe_id'});
       delete salesCache[locId+'_'+isoD(curWeek)];
