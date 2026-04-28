@@ -458,7 +458,18 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="fg"><label class="flbl">Retail Price $</label><input class="fi" id="rf-price" type="number" min="0" step="0.01" placeholder="0.00"/></div>
     </div>
     <div class="fg"><label class="flbl">Description</label><input class="fi" id="rf-desc" placeholder="Short description (optional)"/></div>
-    <div class="fg"><label class="flbl">Square Item Name (for auto-matching)</label><input class="fi" id="rf-sq" placeholder="Exact name in Square POS"/></div>
+    <div class="fg">
+      <label class="flbl">Square Menu Item</label>
+      <div style="display:flex;gap:8px">
+        <select class="fi fsel" id="rf-sq-select" style="flex:1" onchange="onSquareItemSelect(this)">
+          <option value="">-- Select from Square or type below --</option>
+        </select>
+        <button class="btn btn-s btn-sm" onclick="loadSquareMenu()" id="btn-load-sq" style="white-space:nowrap">↺ Load</button>
+      </div>
+      <div style="margin-top:6px">
+        <input class="fi" id="rf-sq" placeholder="Square item name (auto-filled or type manually)" style="margin-top:4px"/>
+      </div>
+    </div>
     <!-- Photo upload -->
     <div class="fg">
       <label class="flbl">Photo</label>
@@ -574,7 +585,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 // ── CONFIG ──────────────────────────────────────────────────────
 const SUPA_URL = 'https://fvpseseunjkxwumnfsnm.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cHNlc2V1bmpreHd1bW5mc25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NzQzMDEsImV4cCI6MjA5MjQ1MDMwMX0.eZ1UCixLWT-oKT1cFttZQ_w9C8dtMroO_AMs3FOD79c';
-const SQ_API   = '/api/square';
+const SQ_API   = 'https://neo-square-proxy.dadadadaiki73.workers.dev';
 const SB = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 window._SB = SB;  // ensure global access
 
@@ -970,9 +981,44 @@ function renderRecipes(){
   }).join('')||'<div class="empty"><div class="eico">◉</div><h3>No recipes yet</h3><p>Add your first recipe to get started.</p></div>';
 }
 
+
+// ── SQUARE CATALOG ────────────────────────────────────────────────
+let squareMenuItems = [];
+
+async function loadSquareMenu() {
+  const btn = document.getElementById('btn-load-sq');
+  const sel = document.getElementById('rf-sq-select');
+  btn.textContent = '↺ Loading…'; btn.disabled = true;
+  try {
+    const r = await fetch(`${SQ_API}?action=catalog`);
+    const d = await r.json();
+    squareMenuItems = d.items || [];
+    sel.innerHTML = '<option value="">-- Select from Square --</option>' +
+      squareMenuItems.map(item =>
+        `<option value="${item.id}" data-name="${item.name}" data-price="${item.variations?.[0]?.price||0}">${item.name}${item.variations?.[0]?.price ? ' — $'+(item.variations[0].price).toFixed(2) : ''}</option>`
+      ).join('');
+    toast(`✓ Loaded ${squareMenuItems.length} items from Square`);
+  } catch(e) {
+    toast('⚠ Could not load Square menu: '+e.message);
+  }
+  btn.textContent = '↺ Load'; btn.disabled = false;
+}
+
+function onSquareItemSelect(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  const name  = opt.dataset.name;
+  const price = parseFloat(opt.dataset.price) || 0;
+  document.getElementById('rf-sq').value    = name;
+  document.getElementById('rf-name').value  = document.getElementById('rf-name').value || name;
+  document.getElementById('rf-price').value = document.getElementById('rf-price').value || price;
+}
+
 // ── RECIPE MODAL ──────────────────────────────────────────────────
 function openRecModal(recId){
   if(CU.role==='gm')return; ingRowN=0; photoFile=null; photoPreviewUrl=null;
+  // Auto-load Square menu items
+  if(squareMenuItems.length===0) loadSquareMenu();
   document.getElementById('rf-id').value=recId||'';
   document.getElementById('m-rec-title').textContent=recId?'Edit Recipe':'Add Recipe';
   document.getElementById('btn-del-rec').style.display=recId?'':'none';
