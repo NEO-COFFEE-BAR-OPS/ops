@@ -842,6 +842,7 @@ async function squareSync(){
     const rows=[];
     const matched=new Set();
     for(const item of d.items){
+      if(!item.name)continue;  // skip items with no name
       // Match: Square item name == recipe square_item_name (exact, case-insensitive)
       const rec=RECS.find(r=>{
         if(!r.square_item_name)return false;
