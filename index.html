@@ -845,7 +845,7 @@ async function squareSync(){
       if(!item.name)continue;  // skip items with no name
       // Match: Square item name == recipe square_item_name (exact, case-insensitive)
       const rec=RECS.find(r=>{
-        if(!r.square_item_name)return false;
+        if(!r.square_item_name||!item.name)return false;
         const sq=r.square_item_name.trim().toLowerCase();
         const it=item.name.trim().toLowerCase();
         return sq===it;
@@ -856,7 +856,7 @@ async function squareSync(){
       }
     }
     console.log('Square items:', d.items.length, 'Matched:', rows.length);
-    console.log('Unmatched:', d.items.filter(item=>!RECS.find(r=>r.square_item_name?.toLowerCase()===item.name.toLowerCase())).map(i=>i.name));
+    console.log('Unmatched:', d.items.filter(item=>item.name&&!RECS.find(r=>r.square_item_name&&r.square_item_name.toLowerCase()===item.name.toLowerCase())).map(i=>i.name));
     if(rows.length){
       await SB.from('sales_data').upsert(rows,{onConflict:'location_id,week_start,recipe_id'});
       delete salesCache[locId+'_'+isoD(curWeek)];
